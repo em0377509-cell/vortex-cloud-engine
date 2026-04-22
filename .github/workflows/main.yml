@@ -36,7 +36,7 @@ jobs:
 
           #[tokio::main]
           async fn main() {
-              let target = "https://www.ninjahex.com/"; // জিহাদ, এখানে তোমার লিংক দাও
+              let target = "https://myaura.xyz/"; // জিহাদ, এখানে তোমার লিংক দাও
               let client = Client::builder()
                   .danger_accept_invalid_certs(true)
                   .build().unwrap();
